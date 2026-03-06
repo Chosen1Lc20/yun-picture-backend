@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.10</version>
+		<version>3.0.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.lc</groupId>
@@ -37,8 +37,8 @@
 <!--	mybatis-plus	-->
 		<dependency>
 			<groupId>com.baomidou</groupId>
-			<artifactId>mybatis-plus-boot-starter</artifactId>
-			<version>3.5.9</version>
+			<artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+			<version>3.5.15</version>
 		</dependency>
 <!--	hu-tool https://doc.hutool.cn/pages/index/#%F0%9F%8D%8Amaven	-->
 		<dependency>
@@ -58,31 +58,29 @@
 			<artifactId>spring-boot-starter-aop</artifactId>
 		</dependency>
 
-
+		<!-- Lombok -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.30</version>
+			<scope>provided</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.mybatis.spring.boot</groupId>
-			<artifactId>mybatis-spring-boot-starter-test</artifactId>
-			<version>3.0.5</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
 
+	</dependencies>
+<!--1. maven-compiler-plugin（Maven 编译插件）
+这是 Java 项目最核心的编译插件，负责将你的 .java 源代码编译成 JVM 能识别的 .class 字节码文件。你配置的这部分重点是支持 Lombok 注解生效：-->
 	<build>
 		<plugins>
 			<plugin>
@@ -93,10 +91,13 @@
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
+							<version>1.18.30</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+<!--这是 Spring Boot 项目专属的插件，核心功能是将项目打包成可执行的 JAR 包
+（包含嵌入式 Tomcat/Jetty 容器，直接 java -jar 就能运行），你配置的部分是优化打包体积：-->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
