@@ -118,7 +118,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名错误");
         }
 
-        if(userPassword.length() < 6){
+        if(userPassword.length() < 8){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户密码错误");
         }
         String encryptPassword = getEncryptPassword(userPassword);
