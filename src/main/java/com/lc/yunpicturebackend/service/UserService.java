@@ -1,9 +1,17 @@
 package com.lc.yunpicturebackend.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.lc.yunpicturebackend.model.dto.user.UserAddRequest;
+import com.lc.yunpicturebackend.model.dto.user.UserQueryRequest;
+import com.lc.yunpicturebackend.model.dto.user.UserUpdateRequest;
 import com.lc.yunpicturebackend.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lc.yunpicturebackend.model.vo.LoginUserVo;
+import com.lc.yunpicturebackend.model.vo.UserVo;
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.List;
 
 /**
 * @author lianchao0921
@@ -17,7 +25,19 @@ public interface UserService extends IService<User> {
 
     User getLoginUser(HttpServletRequest request);
 
+    boolean userLogout(HttpServletRequest request);
+
     LoginUserVo getLoginUserVo(User user);
 
-    boolean userLogout(HttpServletRequest request);
+    UserVo getUserVo(User user);
+
+    List<UserVo> getUserVoList(List<User> userList);
+
+    QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    String getEncryptPassword(String userPassword);
+
+    User getSaftyUser(User originalUser);
+
+    UpdateWrapper<User> getUpdateWrapper(UserUpdateRequest userUpdateRequest);
 }

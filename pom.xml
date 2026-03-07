@@ -38,9 +38,15 @@
 		<dependency>
 			<groupId>com.baomidou</groupId>
 			<artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-			<version>3.5.15</version>
+			<version>3.5.9</version>
 		</dependency>
-<!--	hu-tool https://doc.hutool.cn/pages/index/#%F0%9F%8D%8Amaven	-->
+		<!--	mybatis分页插件		-->
+		<dependency>
+			<groupId>com.baomidou</groupId>
+			<artifactId>mybatis-plus-jsqlparser-4.9</artifactId>
+		</dependency>
+
+		<!--	hu-tool https://doc.hutool.cn/pages/index/#%F0%9F%8D%8Amaven	-->
 		<dependency>
 			<groupId>cn.hutool</groupId>
 			<artifactId>hutool-all</artifactId>
@@ -79,6 +85,25 @@
 		</dependency>
 
 	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>3.0.5</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-bom</artifactId>
+				<version>3.5.9</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 <!--1. maven-compiler-plugin（Maven 编译插件）
 这是 Java 项目最核心的编译插件，负责将你的 .java 源代码编译成 JVM 能识别的 .class 字节码文件。你配置的这部分重点是支持 Lombok 注解生效：-->
 	<build>

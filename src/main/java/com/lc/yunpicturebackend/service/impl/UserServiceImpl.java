@@ -5,12 +5,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lc.yunpicturebackend.exception.BusinessException;
 import com.lc.yunpicturebackend.exception.ErrorCode;
+import com.lc.yunpicturebackend.exception.ThrowUtils;
+import com.lc.yunpicturebackend.model.dto.user.UserAddRequest;
+import com.lc.yunpicturebackend.model.dto.user.UserQueryRequest;
+import com.lc.yunpicturebackend.model.dto.user.UserUpdateRequest;
 import com.lc.yunpicturebackend.model.entity.User;
 import com.lc.yunpicturebackend.model.enums.UserRoleEnum;
 import com.lc.yunpicturebackend.model.vo.LoginUserVo;
@@ -194,6 +200,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @param user 当前用户
      * @return 登录用户视图
      */
+    @Override
     public LoginUserVo getLoginUserVo(User user) {
         if(user == null){
             return null;
@@ -208,6 +215,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @param user 要查询的用户
      * @return 用户视图
      */
+    @Override
     public UserVo getUserVo(User user) {
         if(user == null){
             return null;
@@ -222,6 +230,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @param userList 要查询的用户列表
      * @return 用户视图列表
      */
+    @Override
     public List<UserVo> getUserVoList(List<User> userList) {
         if(CollUtil.isEmpty(userList)){
             return null;
@@ -229,6 +238,55 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
         return userList.stream().map(this::getUserVo).collect(Collectors.toList());
     }
+
+    /**
+     * 根据 userQueryRequest 获取对应的queryWrapper
+     * @param userQueryRequest 用户查询请求
+     * @return QueryWrapper<User>
+     */
+    @Override
+    public QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest) {
+        if (userQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        Long id = userQueryRequest.getId();
+        String userAccount = userQueryRequest.getUserAccount();
+        String userName = userQueryRequest.getUserName();
+        String userProfile = userQueryRequest.getUserProfile();
+        String userRole = userQueryRequest.getUserRole();
+        String sortField = userQueryRequest.getSortField();
+        String sortOrder = userQueryRequest.getSortOrder();
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq(ObjUtil.isNotNull(id), "id", id);
+        queryWrapper.eq(StrUtil.isNotBlank(userRole), "userRole", userRole);
+        queryWrapper.like(StrUtil.isNotBlank(userAccount), "userAccount", userAccount);
+        queryWrapper.like(StrUtil.isNotBlank(userName), "userName", userName);
+        queryWrapper.like(StrUtil.isNotBlank(userProfile), "userProfile", userProfile);
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
+        return queryWrapper;
+    }
+
+    /**
+     * 根据 userUpdateRequest 获取对应的queryWrapper
+     * @param userUpdateRequest 用户更新请求
+     * @return QueryWrapper<User>
+     */
+    public UpdateWrapper<User> getUpdateWrapper(UserUpdateRequest userUpdateRequest) {
+        ThrowUtils.throwIf(ObjUtil.isEmpty(userUpdateRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
+        Long id = userUpdateRequest.getId();
+        String userName = userUpdateRequest.getUserName();
+        String userAvatar = userUpdateRequest.getUserAvatar();
+        String userProfile = userUpdateRequest.getUserProfile();
+        String userRole = userUpdateRequest.getUserRole();
+        UpdateWrapper<User> userUpdateWrapper = new UpdateWrapper<>();
+        userUpdateWrapper.eq(ObjUtil.isNotNull(id), "id", id);
+        userUpdateWrapper.set(StrUtil.isNotBlank(userRole), "userRole", userRole);
+        userUpdateWrapper.set(StrUtil.isNotBlank(userAvatar), "userAccount", userAvatar);
+        userUpdateWrapper.set(StrUtil.isNotBlank(userName), "userName", userName);
+        userUpdateWrapper.set(StrUtil.isNotBlank(userProfile), "userProfile", userProfile);
+        return userUpdateWrapper;
+    }
+
 }
 
 
