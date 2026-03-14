@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.imageio.ImageIO;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,7 +42,7 @@ public class UserController {
      * @return 注册用户id
      */
     @PostMapping("register")
-    public long userRegister(@RequestBody UserRegisterRequest registerRequest) {
+    public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest registerRequest) {
         if(ObjUtil.isEmpty(registerRequest)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"注册参数为空");
         }
@@ -49,7 +50,8 @@ public class UserController {
         String userPassword = registerRequest.getUserPassword();
         String checkPassword = registerRequest.getCheckPassword();
 
-        return userService.userRegister(userAccount, userPassword, checkPassword);
+        long uid = userService.userRegister(userAccount, userPassword, checkPassword);
+        return ResultUtils.success(uid);
     }
 
     /**
@@ -185,6 +187,7 @@ public class UserController {
      * @return BaseResponse<IPage<UserVo>>
      */
     @PostMapping("/list/page/vo")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<IPage<UserVo>> listUserVoByPage(@RequestBody UserQueryRequest userQueryRequest) {
         ThrowUtils.throwIf(ObjUtil.isEmpty(userQueryRequest), new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
         IPage<User> page = new Page<>(userQueryRequest.getCurrent(), userQueryRequest.getPageSize());

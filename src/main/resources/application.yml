@@ -7,7 +7,8 @@ spring:
     username: root
     password: 3083350590Lc#
     url: jdbc:mysql://localhost:3306/yun_picture?serverTimezone=Asia/Shanghai
-
+  profiles:
+    active: local
 server:
   port: 8123
   servlet:
