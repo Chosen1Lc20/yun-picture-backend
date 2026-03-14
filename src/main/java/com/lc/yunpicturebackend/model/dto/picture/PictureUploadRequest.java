@@ -1,0 +1,15 @@
+package com.lc.yunpicturebackend.model.dto.picture;
+
+import java.io.Serial;
+import java.io.Serializable;
+
+public class PictureUploadRequest implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -2480085631516702856L;
+
+    /**
+     * 图片 id (用于修改)
+     */
+    private Long id;
+}
