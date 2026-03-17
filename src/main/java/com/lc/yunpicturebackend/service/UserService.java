@@ -40,4 +40,6 @@ public interface UserService extends IService<User> {
     User getSaftyUser(User originalUser);
 
     UpdateWrapper<User> getUpdateWrapper(UserUpdateRequest userUpdateRequest);
+
+    boolean isAdmin(User user);
 }
