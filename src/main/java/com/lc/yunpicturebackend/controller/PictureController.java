@@ -3,7 +3,6 @@ package com.lc.yunpicturebackend.controller;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lc.yunpicturebackend.annotation.AuthCheck;
 import com.lc.yunpicturebackend.common.BaseResponse;
@@ -17,21 +16,23 @@ import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.picture.*;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.lc.yunpicturebackend.model.entity.User;
+import com.lc.yunpicturebackend.model.vo.PictureTagCategory;
 import com.lc.yunpicturebackend.model.vo.PictureVo;
 import com.lc.yunpicturebackend.service.PictureService;
 import com.lc.yunpicturebackend.service.UserService;
-import com.lc.yunpicturebackend.service.impl.PictureServiceImpl;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
-
+@Slf4j
 @RestController("/picture")
 @RequestMapping("/picture")
 public class PictureController {
@@ -44,10 +45,21 @@ public class PictureController {
     @Resource
     private PictureService pictureService;
 
-    @PostMapping("/upload")
+    /**
+     * 图片上传
+     * @param file 文件
+     * @param pictureUploadRequest 图片上传请求
+     * @param request HttpServletRequest
+     * @return BaseResponse<PictureVo>
+     */
+    @Operation(summary = "图片上传", description = "multipart/form-data 格式上传图片，附带图片信息")
+    @PostMapping(
+            value = "/upload",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE // 核心：明确接口只接收文件上传格式
+    )
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVo> uploadPicture(
-            @RequestPart(value = "file") MultipartFile file,
+            @RequestPart("file") MultipartFile file,
             PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
         //校验参数
@@ -155,9 +167,10 @@ public class PictureController {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
         long current = pictureQueryRequest.getCurrent();
         long pageSize = pictureQueryRequest.getPageSize();
+        QueryWrapper<Picture> queryPictureWrapper = pictureService.getQueryPictureWrapper(pictureQueryRequest);
         Page<Picture> picturePage = new Page<>(current, pageSize);
 
-        Page<Picture> pageResult = pictureService.page(picturePage);
+        Page<Picture> pageResult = pictureService.page(picturePage,queryPictureWrapper);
 
         return ResultUtils.success(pageResult);
     }

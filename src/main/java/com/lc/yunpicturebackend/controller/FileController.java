@@ -13,14 +13,13 @@ import com.lc.yunpicturebackend.service.UserService;
 import com.qcloud.cos.model.COSObject;
 import com.qcloud.cos.model.COSObjectInputStream;
 import com.qcloud.cos.utils.IOUtils;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.Response;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -29,12 +28,17 @@ import java.io.InputStream;
 
 @RestController("/file")
 @Slf4j
+@RequestMapping("file")
 public class FileController {
     @Resource
     private CosManager cosManager;
-
+    /**
+     * 关键：
+     * 1. consumes 指定 multipart/form-data（强制文件上传格式）
+     * 2. @RequestPart 指定参数名（前后端必须一致）
+     */
     @AuthCheck( mustRole = UserConstant.ADMIN_ROLE )
-    @PostMapping("/test/upload")
+    @PostMapping(value = "/test/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseResponse<String> testUpload(@RequestPart MultipartFile multipartFile) {
         String originalFilename = multipartFile.getOriginalFilename();
         String filePath = String.format("/test4yuntuku/%s", originalFilename);

@@ -131,7 +131,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         pictureQueryWrapper.eq(id !=null,"id", id);
         pictureQueryWrapper.like(StringUtils.isNotBlank(name),"name", name);
         pictureQueryWrapper.like(StringUtils.isNotBlank(introduction),"introduction", introduction);
-        pictureQueryWrapper.like(picFormat !=null,"picFormat", picFormat);
+        pictureQueryWrapper.like(StringUtils.isNotBlank(picFormat),"picFormat", picFormat);
         pictureQueryWrapper.eq(StringUtils.isNotBlank(category),"category", category);
         pictureQueryWrapper.eq(ObjectUtil.isNotNull(picSize),"picSize", picSize);
         pictureQueryWrapper.eq(ObjectUtil.isNotNull(picWidth),"picWidth", picWidth);
@@ -177,7 +177,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     public Page<PictureVo> getPictureVoPage(Page<Picture> page, HttpServletRequest request) {
         List<Picture> pictureList = page.getRecords();
         Page<PictureVo> pictureVoPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        if(CollUtil.isNotEmpty(pictureList)){
+        if(CollUtil.isEmpty(pictureList)){
             return pictureVoPage;
         }
         List<PictureVo> pictureVoList =
