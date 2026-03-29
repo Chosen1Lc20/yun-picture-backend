@@ -3,6 +3,8 @@ package com.lc.yunpicturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lc.yunpicturebackend.model.dto.picture.PictureQueryRequest;
+import com.lc.yunpicturebackend.model.dto.picture.PictureReviewRequest;
+import com.lc.yunpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.lc.yunpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -17,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 * @createDate 2026-03-14 21:17:46
 */
 public interface PictureService extends IService<Picture> {
-    PictureVo uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser);
+    PictureVo uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
     PictureVo getPictureVo(Picture picture, HttpServletRequest request);
 
@@ -27,4 +29,14 @@ public interface PictureService extends IService<Picture> {
 
     QueryWrapper<Picture> getQueryPictureWrapper(PictureQueryRequest pictureQueryRequest);
 
+    boolean doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
+
+    void fillReviewParams(Picture picture,User loginUser);
+
+    /**
+     * 批量上传图片
+     * @param pictureUploadByBatchRequest
+     * @return 上传成功的页数
+     */
+    int uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 }

@@ -3,6 +3,8 @@ package com.lc.yunpicturebackend.controller;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lc.yunpicturebackend.annotation.AuthCheck;
 import com.lc.yunpicturebackend.common.BaseResponse;
@@ -16,6 +18,7 @@ import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.picture.*;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.lc.yunpicturebackend.model.entity.User;
+import com.lc.yunpicturebackend.model.enums.ReviewStatusEnum;
 import com.lc.yunpicturebackend.model.vo.PictureTagCategory;
 import com.lc.yunpicturebackend.model.vo.PictureVo;
 import com.lc.yunpicturebackend.service.PictureService;
@@ -46,7 +49,7 @@ public class PictureController {
     private PictureService pictureService;
 
     /**
-     * 图片上传
+     * 图片上传 (管理员和用户都可以上传图片)
      * @param file 文件
      * @param pictureUploadRequest 图片上传请求
      * @param request HttpServletRequest
@@ -57,7 +60,6 @@ public class PictureController {
             value = "/upload",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE // 核心：明确接口只接收文件上传格式
     )
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVo> uploadPicture(
             @RequestPart("file") MultipartFile file,
             PictureUploadRequest pictureUploadRequest,
@@ -66,6 +68,19 @@ public class PictureController {
         ThrowUtils.throwIf(file==null,new BusinessException(ErrorCode.PARAMS_ERROR,"文件为空"));
         User loginUser = userService.getLoginUser(request);
         PictureVo pictureVo = pictureService.uploadPicture(file, pictureUploadRequest, loginUser);
+
+        return ResultUtils.success(pictureVo);
+    }
+
+    @PostMapping("/upload/url")
+    public BaseResponse<PictureVo> uploadPictureByUrl(
+            @RequestBody PictureUploadRequest pictureUploadRequest,
+            HttpServletRequest request) {
+        String fileUrl = pictureUploadRequest.getFileUrl();
+        //校验参数
+        ThrowUtils.throwIf(StringUtils.isBlank(fileUrl),new BusinessException(ErrorCode.PARAMS_ERROR,"文件为空"));
+        User loginUser = userService.getLoginUser(request);
+        PictureVo pictureVo = pictureService.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
 
         return ResultUtils.success(pictureVo);
     }
@@ -102,7 +117,7 @@ public class PictureController {
      */
     @PostMapping("/update")
     @AuthCheck( mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureUpdateRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
         Long id = pictureUpdateRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"图片不存在"));
@@ -115,6 +130,8 @@ public class PictureController {
         //判断图片是否存在
         Picture QueryedPicture = pictureService.getById(id);
         ThrowUtils.throwIf(ObjectUtil.isNull(QueryedPicture),new BusinessException(ErrorCode.OPERATION_ERROR,"更新的图片不存在"));
+        //补充审核参数
+        pictureService.fillReviewParams(picture,userService.getLoginUser(request));
         //操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新图片失败"));
@@ -175,6 +192,12 @@ public class PictureController {
         return ResultUtils.success(pageResult);
     }
 
+    /**
+     * 分页查询 Picture 给用户用的 (只展示已过审的图片)
+     * @param pictureQueryRequest
+     * @param request
+     * @return
+     */
     @PostMapping("list/page/vo")
     public BaseResponse<Page<PictureVo>> listPagePictureVo(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
@@ -182,6 +205,8 @@ public class PictureController {
         long pageSize = pictureQueryRequest.getPageSize();
         //限制爬虫
         ThrowUtils.throwIf(pageSize>30,new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误"));
+        //普通用户默认只能查看已过审的数据
+        pictureQueryRequest.setReviewStatus(ReviewStatusEnum.PASS.getStatus());
         QueryWrapper<Picture> queryPictureWrapper = pictureService.getQueryPictureWrapper(pictureQueryRequest);
 
         Page<Picture> picturePage = new Page<>(current, pageSize);
@@ -219,6 +244,8 @@ public class PictureController {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "当前用户没有权限编辑图片");
             }
         }
+        //补充审核参数
+        pictureService.fillReviewParams(picture,userService.getLoginUser(request));
         //有权限,操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新图片失败"));
@@ -235,4 +262,25 @@ public class PictureController {
         return ResultUtils.success(pictureTagCategory);
     }
 
+    @PostMapping("/review")
+    public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(pictureReviewRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"传递参数为空"));
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR,"当前用户未登录");
+        }
+        boolean result = pictureService.doPictureReview(pictureReviewRequest, loginUser);
+        ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"审核操作失败"));
+        return ResultUtils.success(true);
+    }
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @PostMapping("/upload/batch")
+    public BaseResponse<Integer> uploadPictureByBatch(@RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(pictureUploadByBatchRequest),ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean isAdmin = userService.isAdmin(loginUser);
+        ThrowUtils.throwIf(!isAdmin,ErrorCode.NO_AUTH_ERROR);
+        int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(uploadCount);
+    }
 }
