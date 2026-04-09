@@ -11,6 +11,7 @@ import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.file.UploadPictureResult;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * 使用了模板设计模式
@@ -42,8 +44,13 @@ public abstract class PictureUploadTemplate<T> {
         //拼接图片上传地址
         String originalFileName = getOriginalFileName(t);
         String UUId = RandomUtil.randomString(16);
+        //文件后缀名
         String fileSuffix = FileUtil.getSuffix(originalFileName);
+        //文件类型
+        String fileType = getFileType(t);
+
         String uploadFileName = String.format("%s_%s.%s", formatDatetime, UUId, fileSuffix);
+        //uploadPathPrefix示例: public/2029839156843589633
         String finalUploadPath = String.format("/%s/%s", uploadPathPrefix, uploadFileName);
         File tempFile = null;
         try {
@@ -53,7 +60,19 @@ public abstract class PictureUploadTemplate<T> {
             this.processPicture(t, tempFile);
             //4.腾讯云 COS 对象存储上传文件成功后，返回的上传结果回执对象
             PutObjectResult putObjectResult = cosManager.putPictureObject(finalUploadPath, tempFile);
-            //图片信息
+            //压缩图片信息
+            List<CIObject> ciObjects = putObjectResult.getCiUploadResult().getProcessResults().getObjectList();
+            if(!ciObjects.isEmpty()){
+                CIObject compressedPic = ciObjects.get(0);
+                //缩略图默认为压缩图
+                CIObject thumbnailPic = compressedPic;
+                if(ciObjects.size()>1){
+                    //说明有缩略图
+                    thumbnailPic = ciObjects.get(1);
+                }
+                return buildResult(originalFileName, compressedPic, thumbnailPic);
+            }
+            //原图片信息
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             //5.返回封装结果
             return this.buildResult(originalFileName,finalUploadPath,imageInfo,tempFile);
@@ -88,7 +107,8 @@ public abstract class PictureUploadTemplate<T> {
 
     abstract String getFileType(T t);
 
-    public UploadPictureResult buildResult(String originalFileName, String finalUploadPath, ImageInfo imageInfo , File tempFile) {
+    public UploadPictureResult buildResult(String originalFileName, String finalUploadPath,
+                                           ImageInfo imageInfo , File tempFile) {
         String format = imageInfo.getFormat();
         int picWidth = imageInfo.getWidth();
         int picHeight = imageInfo.getHeight();
@@ -104,6 +124,25 @@ public abstract class PictureUploadTemplate<T> {
 
         return uploadPictureResult;
     }
+    public UploadPictureResult buildResult(String originalFileName, CIObject compressedCiObj, CIObject thumbnailCiObj) {
+        String key = compressedCiObj.getKey();
+        String format = compressedCiObj.getFormat();
+        Integer picHeight = compressedCiObj.getHeight();
+        Integer picWidth = compressedCiObj.getWidth();
+        Integer picSize = compressedCiObj.getSize();
+        double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
+        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+        uploadPictureResult.setPicFormat(format);
+        uploadPictureResult.setPicWidth(picWidth);
+        uploadPictureResult.setPicHeight(picHeight);
+        uploadPictureResult.setPicScale(picScale);
+        uploadPictureResult.setPicSize(picSize.longValue());
+        uploadPictureResult.setUrl(cosClientConfig.getHost()+"/"+key);
+        uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost()+"/"+thumbnailCiObj.getKey());
+        uploadPictureResult.setPicName(FileUtil.mainName(originalFileName));
+        return uploadPictureResult;
+    }
+
 
     public void deleteTempFile(File file) {
         if(file==null){
@@ -138,7 +177,7 @@ public abstract class PictureUploadTemplate<T> {
         return sb.toString().toUpperCase();
     }
     /**
-     * 根据魔数 获取文件真实类型
+     * 根据魔数 获取文件真实类型 魔数匹配优先使用startsWith()而非全量匹配，兼容不同长度魔数
      * @param inputStream 文件输入流（URL流/上传文件流）
      * @return 文件类型（JPG/PNG/GIF/BMP/WEBP），未知返回 UNKNOWN
      */

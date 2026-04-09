@@ -13,6 +13,13 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
+  # Redis配置 connect-timeout的单位默认是ms
+  data:
+    redis:
+      password: 123456
+      port: 6379
+      host: 127.0.0.1
+      connect-timeout: 5000
 server:
   port: 8123
   servlet:

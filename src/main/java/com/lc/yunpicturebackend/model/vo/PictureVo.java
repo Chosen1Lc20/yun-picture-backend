@@ -20,8 +20,13 @@ public class PictureVo implements Serializable {
     /**  
      * 图片 url  
      */  
-    private String url;  
-  
+    private String url;
+
+    /**
+     * 缩略图片 url
+     */
+    private String thumbnailUrl;
+
     /**  
      * 图片名称  
      */  
@@ -91,7 +96,12 @@ public class PictureVo implements Serializable {
      * 创建用户信息  
      */  
     private UserVo user;
-  
+
+    /**
+     * 空间id
+     */
+    private Long spaceId;
+
     private static final long serialVersionUID = 1L;  
   
     /**  

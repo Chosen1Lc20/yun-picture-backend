@@ -56,6 +56,11 @@ public class PictureEditRequest implements Serializable {
      * 审核时间
      */
     private Date reviewTime;
-  
+
+    /**
+     *  空间id
+     */
+    private Long spaceId;
+
     private static final long serialVersionUID = 1L;  
 }

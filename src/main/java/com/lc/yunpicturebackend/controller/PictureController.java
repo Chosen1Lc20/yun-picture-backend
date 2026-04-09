@@ -1,15 +1,23 @@
 package com.lc.yunpicturebackend.controller;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.lc.yunpicturebackend.annotation.AuthCheck;
+import com.lc.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
+import com.lc.yunpicturebackend.api.imagesearch.model.ImageSearchResult;
 import com.lc.yunpicturebackend.common.BaseResponse;
 import com.lc.yunpicturebackend.common.DeleteRequest;
 import com.lc.yunpicturebackend.common.ResultUtils;
+import com.lc.yunpicturebackend.constant.KeyConstant;
 import com.lc.yunpicturebackend.constant.UserConstant;
 import com.lc.yunpicturebackend.exception.BusinessException;
 import com.lc.yunpicturebackend.exception.ErrorCode;
@@ -17,36 +25,59 @@ import com.lc.yunpicturebackend.exception.ThrowUtils;
 import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.picture.*;
 import com.lc.yunpicturebackend.model.entity.Picture;
+import com.lc.yunpicturebackend.model.entity.Space;
 import com.lc.yunpicturebackend.model.entity.User;
+import com.lc.yunpicturebackend.model.enums.PictureFormatEnum;
 import com.lc.yunpicturebackend.model.enums.ReviewStatusEnum;
 import com.lc.yunpicturebackend.model.vo.PictureTagCategory;
 import com.lc.yunpicturebackend.model.vo.PictureVo;
 import com.lc.yunpicturebackend.service.PictureService;
+import com.lc.yunpicturebackend.service.SpaceService;
 import com.lc.yunpicturebackend.service.UserService;
+import com.qcloud.cos.model.DeleteObjectsRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+//https://picsum.photos/200 可以用来测试的接口,随机返回一张图片
 @Slf4j
 @RestController("/picture")
 @RequestMapping("/picture")
 public class PictureController {
-    @Resource
-    private CosManager cosManager;
 
     @Resource
     private UserService userService;
 
     @Resource
     private PictureService pictureService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private SpaceService spaceService;
+
+    private final Cache<String, String> LOCAL_CACHE =
+            Caffeine.newBuilder().initialCapacity(1024)
+                    .maximumSize(10000L)
+                    // 缓存 5 分钟移除
+                    .expireAfterWrite(5L, TimeUnit.MINUTES)
+                    .build();
 
     /**
      * 图片上传 (管理员和用户都可以上传图片)
@@ -96,17 +127,9 @@ public class PictureController {
         ThrowUtils.throwIf(ObjectUtil.isNull(deleteRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
         Long id = deleteRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"参数传递错误"));
-        //管理员和图片创建者才可以删除
         User loginUser = userService.getLoginUser(request);
         Picture pictureToDel = pictureService.getById(id);
-        ThrowUtils.throwIf(ObjectUtil.isNull(pictureToDel),new BusinessException(ErrorCode.PARAMS_ERROR,"图片不存在"));
-        if(!userService.isAdmin(loginUser)){
-            if(!pictureToDel.getUserId().equals(loginUser.getId()) ){
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"当前用户无权删除图片");
-            }
-        }
-        //有权限删除
-        boolean result = pictureService.removeById(id);
+        boolean result = pictureService.deletePictureById(pictureToDel, loginUser);
         return result ? ResultUtils.success(result):ResultUtils.failure();
     }
 
@@ -144,15 +167,19 @@ public class PictureController {
      * @return BaseResponse<PictureVo>
      */
     @PostMapping("/get/vo")
-    @AuthCheck( mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<PictureVo> getPictureVoById(@RequestBody PictureQueryRequest pictureQueryRequest) {
+    public BaseResponse<PictureVo> getPictureVoById(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
         Long id = pictureQueryRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0 ,new BusinessException(ErrorCode.PARAMS_ERROR,"传递参数错误>"));
         Picture picture = pictureService.getById(id);
         ThrowUtils.throwIf(ObjectUtil.isNull(picture),new BusinessException(ErrorCode.OPERATION_ERROR,"要查询的图片不存在"));
-
-        PictureVo pictureVo = PictureVo.objToVo(picture);
+        Long spaceId = picture.getSpaceId();
+        User loginUser = userService.getLoginUser(request);
+        if(spaceId!=null){
+            //私有空间的照片只能空间创建人查看,系统管理员也不行!
+            pictureService.checkPictureAuth(loginUser,picture);
+        }
+        PictureVo pictureVo = pictureService.getPictureVo(picture);
         return ResultUtils.success(pictureVo);
     }
 
@@ -203,16 +230,86 @@ public class PictureController {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
         long current = pictureQueryRequest.getCurrent();
         long pageSize = pictureQueryRequest.getPageSize();
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(ObjectUtil.isNull(loginUser),ErrorCode.NO_AUTH_ERROR);
+        //限制爬虫
+        ThrowUtils.throwIf(pageSize>30,new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误"));
+        //普通用户默认只能查看已过审并且是公共图库的图片
+        Long spaceId = pictureQueryRequest.getSpaceId();
+        QueryWrapper<Picture> queryPictureWrapper;
+        if(spaceId==null) {
+            //查公共图库
+            pictureQueryRequest.setReviewStatus(ReviewStatusEnum.PASS.getStatus());
+            pictureQueryRequest.setNullSpaceId(true);
+        } else{
+            //todo
+            //个人私有空间,spaceId不为null
+            Space space = spaceService.getById(spaceId);
+            ThrowUtils.throwIf(ObjectUtil.isNull(space),ErrorCode.PARAMS_ERROR,"空间不存在");
+            //仅空间创建者可以查询自己的空间
+            if(!loginUser.getId().equals(space.getUserId())){
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"当前用户无权限查看该空间");
+            }
+            //可以查看所有状态的图片(包括:过审,审核中,拒绝)
+            pictureQueryRequest.setNullSpaceId(false);
+        }
+        queryPictureWrapper = pictureService.getQueryPictureWrapper(pictureQueryRequest);
+        Page<Picture> picturePage = new Page<>(current, pageSize);
+        Page<Picture> picturePageResult = pictureService.page(picturePage,queryPictureWrapper);
+
+        Page<PictureVo> pictureVoPage = pictureService.getPictureVoPage(picturePageResult, request);
+        return ResultUtils.success(pictureVoPage);
+    }
+
+    /**
+     * 分页查询 Picture 给用户用的 使用了 caffeine和redis 做多级缓存
+     * 在缓存的过程中,有json串和java对象之间的转换,这使得有一些为空的字段被过滤掉了
+     * 为什么在查询时,先查caffeine,然后再查redis
+     * @param pictureQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("list/page/vo/cache")
+    public BaseResponse<Page<PictureVo>> listPagePictureVoWithCache(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(pictureQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
+        long current = pictureQueryRequest.getCurrent();
+        long pageSize = pictureQueryRequest.getPageSize();
         //限制爬虫
         ThrowUtils.throwIf(pageSize>30,new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误"));
         //普通用户默认只能查看已过审的数据
         pictureQueryRequest.setReviewStatus(ReviewStatusEnum.PASS.getStatus());
         QueryWrapper<Picture> queryPictureWrapper = pictureService.getQueryPictureWrapper(pictureQueryRequest);
-
+        //设计缓存的key
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        String cacheKey = String.format("%s_listPagePictureVo_%s", KeyConstant.REDIS_KEY, hashKey);
+        String cachedValue = "";
+        //先查本地缓存
+        cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
+        if(StringUtils.isNotEmpty(cachedValue)){
+            Page<PictureVo> bean = JSONUtil.toBean(JSONUtil.parseObj(cachedValue), Page.class);
+            return ResultUtils.success(bean);
+        }
+        //本地缓存未命中,查redis
+        ValueOperations<String, String> opsForValue = stringRedisTemplate.opsForValue();
+        //redis中的缓存结果
+        cachedValue = opsForValue.get(cacheKey);
+        //redis命中,返回结果并更新caffeine缓存
+        if(StringUtils.isNotEmpty(cachedValue)){
+            //更新caffeine缓存
+            LOCAL_CACHE.put(cacheKey,cachedValue);
+            Page<PictureVo> cachedPage = JSONUtil.toBean(JSONUtil.parseObj(cachedValue), Page.class);
+            return ResultUtils.success(cachedPage);
+        }
+        //redis也没有,查数据库,然后添加到缓存中
         Page<Picture> picturePage = new Page<>(current, pageSize);
         Page<Picture> picturePageResult = pictureService.page(picturePage,queryPictureWrapper);
-
         Page<PictureVo> pictureVoPage = pictureService.getPictureVoPage(picturePageResult, request);
+        // 5-10分钟过期,防止雪崩
+        int expireTime = 300+RandomUtil.randomInt(0, 300);
+        opsForValue.set(cacheKey,JSONUtil.toJsonStr(pictureVoPage),expireTime, TimeUnit.SECONDS);
+        //不要忘了caffeine中也要设置
+        LOCAL_CACHE.put(cacheKey,JSONUtil.toJsonStr(pictureVoPage));
         return ResultUtils.success(pictureVoPage);
     }
 
@@ -222,33 +319,10 @@ public class PictureController {
     @PostMapping("edit")
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(ObjectUtil.isNull(pictureEditRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
-        Long id = pictureEditRequest.getId();
-        ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"图片不存在"));
-        //判断图片是否存在
-        Picture queryedPicture = pictureService.getById(id);
-        ThrowUtils.throwIf(ObjectUtil.isNull(queryedPicture),new BusinessException(ErrorCode.NOT_FOUND_ERROR,"更新的图片不存在"));
-        //图片存在
-        Picture picture = new Picture();
-        BeanUtils.copyProperties(pictureEditRequest, picture);
-        //将list转为json串
-        picture.setTags(JSONUtil.toJsonStr(pictureEditRequest.getTags()));
-        //不同于更新update,编辑需要设置editTime
-        picture.setEditTime(new Date());
-        //校验图片
-        pictureService.validPicture(picture);
-        //仅本人或管理员可以操作
         User loginUser = userService.getLoginUser(request);
-        if(!userService.isAdmin(loginUser)) {
-            //不是管理员,也不是本人,抛出异常
-            if (!queryedPicture.getUserId().equals(loginUser.getId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "当前用户没有权限编辑图片");
-            }
-        }
-        //补充审核参数
-        pictureService.fillReviewParams(picture,userService.getLoginUser(request));
-        //有权限,操作数据库
-        boolean result = pictureService.updateById(picture);
-        ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新图片失败"));
+        ThrowUtils.throwIf(ObjectUtil.isNull(loginUser),ErrorCode.NO_AUTH_ERROR,"当前用户未登录");
+
+        boolean result = pictureService.editPicture(pictureEditRequest, loginUser);
         return ResultUtils.success(result);
     }
 
@@ -260,6 +334,17 @@ public class PictureController {
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);
         return ResultUtils.success(pictureTagCategory);
+    }
+
+    /**
+     * 返回后端支持的图片格式
+     * @return
+     */
+    @GetMapping("/picture_format")
+    public BaseResponse<List<String>> listPictureFormat() {
+        PictureFormatEnum[] values = PictureFormatEnum.values();
+        List<String> formatList = Arrays.stream(values).map(PictureFormatEnum::getFormat).toList();
+        return ResultUtils.success(formatList);
     }
 
     @PostMapping("/review")
@@ -282,5 +367,25 @@ public class PictureController {
         ThrowUtils.throwIf(!isAdmin,ErrorCode.NO_AUTH_ERROR);
         int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
         return ResultUtils.success(uploadCount);
+    }
+
+    /**
+     * 以图搜图
+     * @param pictureSearchRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/search_picture/by/picture")
+    public BaseResponse<List<ImageSearchResult>> searchSimilarPicture(@RequestBody PictureSearchRequest pictureSearchRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(pictureSearchRequest),ErrorCode.PARAMS_ERROR,"传递参数为空");
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser==null,ErrorCode.NO_AUTH_ERROR,"登录后使用该功能");
+        Long pid = pictureSearchRequest.getId();
+        Picture picture = pictureService.getById(pid);
+        ThrowUtils.throwIf(picture==null,ErrorCode.PARAMS_ERROR,"指定的图片不存在");
+        //attention注意:现在url的格式大部分是webp,做了图片压缩。
+        String url = picture.getUrl();
+        List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImages(url);
+        return ResultUtils.success(imageSearchResults);
     }
 }

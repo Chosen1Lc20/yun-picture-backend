@@ -26,6 +26,11 @@ public class Picture {
     private String url;
 
     /**
+     *缩略图url
+     */
+    private String thumbnailUrl;
+
+    /**
      * 图片名称
      */
     private String name;
@@ -115,5 +120,10 @@ public class Picture {
      * 审核时间
      */
     private Date reviewTime;
-    
+
+    /**
+     * 空间id 为null则说明是图库空间
+     */
+    private Long spaceId;
+
 }

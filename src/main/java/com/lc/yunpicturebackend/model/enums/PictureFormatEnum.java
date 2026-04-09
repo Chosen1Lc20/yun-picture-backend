@@ -9,7 +9,8 @@ public enum PictureFormatEnum {
     JPG("jpg"),
     PNG("png"),
     WEBP("webp"),
-    JPEG("jpeg");
+    JPEG("jpeg"),
+    GIF("gif");
 
     private final String format;
 
