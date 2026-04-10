@@ -2,15 +2,12 @@ package com.lc.yunpicturebackend.controller;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.lc.yunpicturebackend.annotation.AuthCheck;
 import com.lc.yunpicturebackend.api.imagesearch.ImageSearchApiFacade;
 import com.lc.yunpicturebackend.api.imagesearch.model.ImageSearchResult;
@@ -22,8 +19,9 @@ import com.lc.yunpicturebackend.constant.UserConstant;
 import com.lc.yunpicturebackend.exception.BusinessException;
 import com.lc.yunpicturebackend.exception.ErrorCode;
 import com.lc.yunpicturebackend.exception.ThrowUtils;
-import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.picture.*;
+import com.lc.yunpicturebackend.model.dto.picture.batch.PictureEditRequestByBatch;
+import com.lc.yunpicturebackend.model.dto.picture.batch.PictureUploadByBatchRequest;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.lc.yunpicturebackend.model.entity.Space;
 import com.lc.yunpicturebackend.model.entity.User;
@@ -34,13 +32,11 @@ import com.lc.yunpicturebackend.model.vo.PictureVo;
 import com.lc.yunpicturebackend.service.PictureService;
 import com.lc.yunpicturebackend.service.SpaceService;
 import com.lc.yunpicturebackend.service.UserService;
-import com.qcloud.cos.model.DeleteObjectsRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
@@ -48,10 +44,7 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 //https://picsum.photos/200 可以用来测试的接口,随机返回一张图片
@@ -330,7 +323,7 @@ public class PictureController {
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
         List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意", "二次元");
-        List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报");
+        List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报", "动漫");
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);
         return ResultUtils.success(pictureTagCategory);
@@ -387,5 +380,48 @@ public class PictureController {
         String url = picture.getUrl();
         List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImages(url);
         return ResultUtils.success(imageSearchResults);
+    }
+
+    /**
+     * 根据颜色搜索图片
+     * @param
+     * @param request
+     * @return
+     */
+    @PostMapping("/search_picture/by/color")
+    public BaseResponse<List<PictureVo>> searchPictureByColor(@RequestBody SearchPictureByColorRequest searchPictureByColorRequest,
+                                                              HttpServletRequest request) {
+        //参数校验
+        ThrowUtils.throwIf(ObjectUtil.isNull(searchPictureByColorRequest),ErrorCode.PARAMS_ERROR);
+        Long spaceId = searchPictureByColorRequest.getSpaceId();
+        String picColor = searchPictureByColorRequest.getPicColor();
+        ThrowUtils.throwIf(picColor==null,ErrorCode.PARAMS_ERROR,"<UNK>");
+        ThrowUtils.throwIf(spaceId==null,ErrorCode.PARAMS_ERROR,"<UNK>");
+        //调用service
+        User loginUser = userService.getLoginUser(request);
+        List<PictureVo> pictureVoList = pictureService.searchPictureByColor(spaceId, picColor, loginUser);
+        return ResultUtils.success(pictureVoList);
+    }
+
+    /**
+     * 批量编辑图片
+     * @param
+     * @param request
+     * @return
+     */
+    @PostMapping("/edit/batch")
+    public BaseResponse<Boolean> editPictureByBatch(@RequestBody PictureEditRequestByBatch pictureEditRequestByBatch,
+                                                            HttpServletRequest request) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(pictureEditRequestByBatch),ErrorCode.PARAMS_ERROR,"参数不能为空");
+        //参数校验
+        Long spaceId = pictureEditRequestByBatch.getSpaceId();
+        List<Long> pictureIdList = pictureEditRequestByBatch.getPictureIdList();
+        ThrowUtils.throwIf(pictureIdList==null,ErrorCode.PARAMS_ERROR,"批量编辑的图片列表为空");
+        ThrowUtils.throwIf(spaceId==null,ErrorCode.PARAMS_ERROR,"空间不存在");
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser==null,ErrorCode.NO_AUTH_ERROR,"当前用户未登录");
+        //调用service
+        boolean result = pictureService.editPictureByBatch(pictureEditRequestByBatch, loginUser);
+        return ResultUtils.success(result);
     }
 }

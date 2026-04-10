@@ -1,4 +1,4 @@
-package com.lc.yunpicturebackend.model.dto.picture;
+package com.lc.yunpicturebackend.model.dto.picture.batch;
 
 import lombok.Data;
 

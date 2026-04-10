@@ -10,6 +10,7 @@ import com.lc.yunpicturebackend.exception.ThrowUtils;
 import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.file.UploadPictureResult;
 import com.lc.yunpicturebackend.model.entity.Picture;
+import com.lc.yunpicturebackend.utils.picture.ColorTransformUtils;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
@@ -60,6 +61,8 @@ public abstract class PictureUploadTemplate<T> {
             this.processPicture(t, tempFile);
             //4.腾讯云 COS 对象存储上传文件成功后，返回的上传结果回执对象
             PutObjectResult putObjectResult = cosManager.putPictureObject(finalUploadPath, tempFile);
+            //原图片信息
+            ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             //压缩图片信息
             List<CIObject> ciObjects = putObjectResult.getCiUploadResult().getProcessResults().getObjectList();
             if(!ciObjects.isEmpty()){
@@ -70,10 +73,8 @@ public abstract class PictureUploadTemplate<T> {
                     //说明有缩略图
                     thumbnailPic = ciObjects.get(1);
                 }
-                return buildResult(originalFileName, compressedPic, thumbnailPic);
+                return buildResult(originalFileName, compressedPic, thumbnailPic, imageInfo);
             }
-            //原图片信息
-            ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             //5.返回封装结果
             return this.buildResult(originalFileName,finalUploadPath,imageInfo,tempFile);
         } catch (Exception e) {
@@ -113,6 +114,8 @@ public abstract class PictureUploadTemplate<T> {
         int picWidth = imageInfo.getWidth();
         int picHeight = imageInfo.getHeight();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
+        //图片主色调
+        String picAve = imageInfo.getAve();
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         uploadPictureResult.setPicFormat(format);
         uploadPictureResult.setPicWidth(picWidth);
@@ -121,16 +124,22 @@ public abstract class PictureUploadTemplate<T> {
         uploadPictureResult.setUrl(cosClientConfig.getHost()+finalUploadPath);
         uploadPictureResult.setPicSize(FileUtil.size(tempFile));
         uploadPictureResult.setPicName(FileUtil.mainName(originalFileName));
+        //attention 由于cos存储的ave格式不是标准的十六进制格式(会去掉前导0),所以在这进行标准化。方便前端展示
+        String standardColor = ColorTransformUtils.getStandardColor(picAve);
+        uploadPictureResult.setPicColor(standardColor);
 
         return uploadPictureResult;
     }
-    public UploadPictureResult buildResult(String originalFileName, CIObject compressedCiObj, CIObject thumbnailCiObj) {
+    public UploadPictureResult buildResult(String originalFileName, CIObject compressedCiObj, CIObject thumbnailCiObj,
+                                           ImageInfo imageInfo) {
         String key = compressedCiObj.getKey();
         String format = compressedCiObj.getFormat();
         Integer picHeight = compressedCiObj.getHeight();
         Integer picWidth = compressedCiObj.getWidth();
         Integer picSize = compressedCiObj.getSize();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
+        //图片主色调
+        String picAve = imageInfo.getAve();
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         uploadPictureResult.setPicFormat(format);
         uploadPictureResult.setPicWidth(picWidth);
@@ -140,6 +149,8 @@ public abstract class PictureUploadTemplate<T> {
         uploadPictureResult.setUrl(cosClientConfig.getHost()+"/"+key);
         uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost()+"/"+thumbnailCiObj.getKey());
         uploadPictureResult.setPicName(FileUtil.mainName(originalFileName));
+        String standardColor = ColorTransformUtils.getStandardColor(picAve);
+        uploadPictureResult.setPicColor(standardColor);
         return uploadPictureResult;
     }
 

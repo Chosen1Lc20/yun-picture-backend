@@ -2,15 +2,16 @@ package com.lc.yunpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lc.yunpicturebackend.common.DeleteRequest;
 import com.lc.yunpicturebackend.model.dto.picture.*;
+import com.lc.yunpicturebackend.model.dto.picture.batch.PictureEditRequestByBatch;
+import com.lc.yunpicturebackend.model.dto.picture.batch.PictureUploadByBatchRequest;
 import com.lc.yunpicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lc.yunpicturebackend.model.entity.User;
 import com.lc.yunpicturebackend.model.vo.PictureVo;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
 * @author lianchao0921
@@ -46,4 +47,14 @@ public interface PictureService extends IService<Picture> {
     boolean deletePictureById(Picture picture, User loginUser);
 
     boolean editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    List<PictureVo> searchPictureByColor(Long spaceId, String picColor, User loginUser);
+
+    /**
+     * 批量编辑图片
+     * @param pictureEditRequestByBatch
+     * @param loginUser
+     * @return
+     */
+    boolean editPictureByBatch(PictureEditRequestByBatch pictureEditRequestByBatch, User loginUser);
 }

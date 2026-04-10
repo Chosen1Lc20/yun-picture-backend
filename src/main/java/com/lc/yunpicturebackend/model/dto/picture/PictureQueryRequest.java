@@ -110,6 +110,11 @@ public class PictureQueryRequest extends PageRequest implements Serializable {
      */
     private Date endEditTime;
 
+    /**
+     *  图片主色调
+     */
+    private String picColor;
+
 
     private static final long serialVersionUID = 1L;  
 }
