@@ -86,7 +86,7 @@ public class PictureController {
     )
     public BaseResponse<PictureVo> uploadPicture(
             @RequestPart("file") MultipartFile file,
-            PictureUploadRequest pictureUploadRequest,
+            @RequestPart("params") PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
         //校验参数
         ThrowUtils.throwIf(file==null,new BusinessException(ErrorCode.PARAMS_ERROR,"文件为空"));
@@ -122,8 +122,8 @@ public class PictureController {
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"参数传递错误"));
         User loginUser = userService.getLoginUser(request);
         Picture pictureToDel = pictureService.getById(id);
-        boolean result = pictureService.deletePictureById(pictureToDel, loginUser);
-        return result ? ResultUtils.success(result):ResultUtils.failure();
+        pictureService.deletePictureById(pictureToDel, loginUser);
+        return ResultUtils.success(true);
     }
 
     /**

@@ -118,7 +118,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 spaceId = oldPicture.getSpaceId();
             } else {
                 //传了spaceId 必须和原有图片一致
-                ThrowUtils.throwIf(spaceId.equals(oldPicture.getSpaceId()), ErrorCode.PARAMS_ERROR, "空间id不一致");
+                ThrowUtils.throwIf(!spaceId.equals(oldPicture.getSpaceId()), ErrorCode.PARAMS_ERROR, "空间id不一致");
             }
         }
         //根据spaceId 判断上传到哪?
@@ -451,7 +451,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             return;
         }
         String picUrl = oldPicture.getUrl();
-        int startIndex = picUrl.indexOf("public");
+        //attention 现在url 有space和public两种
+        //picUrl类似这种格式: https://lcbucket-1411346346.cos.ap-beijing.myqcloud.com/space/2040770195845787650/
+        // 2026-04-10-21-14-49_AW1pLP3oK3M24gdT.webp
+        int startIndex = picUrl.indexOf("space");
+        if(startIndex == -1){
+             startIndex = picUrl.indexOf("public");
+        }
         cosManager.deleteObject(picUrl.substring(startIndex));
         // 清理缩略图
         String thumbnailUrl = oldPicture.getThumbnailUrl();
