@@ -5,6 +5,8 @@ import com.lc.yunpicturebackend.exception.BusinessException;
 import com.lc.yunpicturebackend.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Base64;
+
 /**
  * 对cos格式的颜色转化为标准的十六进制格式
  */

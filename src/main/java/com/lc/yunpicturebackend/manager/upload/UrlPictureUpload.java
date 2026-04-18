@@ -51,8 +51,8 @@ public class UrlPictureUpload extends PictureUploadTemplate<String> {
             }
             //校验大小
             final long ONE_MB = 1024 * 1024;
-            if (response.contentLength() > 2 * ONE_MB) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "上传图片体积不能超过2MB");
+            if (response.contentLength() > 5 * ONE_MB) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "上传图片体积不能超过5MB");
             }
             //校验文件格式
             fileFormat = response.header("Content-Type");

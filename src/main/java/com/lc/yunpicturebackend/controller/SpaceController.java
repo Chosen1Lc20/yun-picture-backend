@@ -80,11 +80,8 @@ public class SpaceController {
         User loginUser = userService.getLoginUser(request);
         Space spaceToDel = spaceService.getById(id);
         ThrowUtils.throwIf(ObjectUtil.isNull(spaceToDel),new BusinessException(ErrorCode.PARAMS_ERROR,"空间不存在"));
-        if(!userService.isAdmin(loginUser)){
-            if(!spaceToDel.getUserId().equals(loginUser.getId()) ){
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"当前用户无权删除空间");
-            }
-        }
+        //校验权限,仅管理员或者本人可以操作
+        spaceService.checkSpaceAuth(spaceToDel,loginUser);
         //有权限删除
         boolean result = spaceService.removeById(id);
         return result ? ResultUtils.success(result):ResultUtils.failure();
@@ -202,24 +199,19 @@ public class SpaceController {
         Space queryedSpace = spaceService.getById(id);
         ThrowUtils.throwIf(ObjectUtil.isNull(queryedSpace),new BusinessException(ErrorCode.NOT_FOUND_ERROR,"更新的空间不存在"));
         //空间存在
-        Space space = new Space();
-        BeanUtils.copyProperties(spaceEditRequest, space);
+        Space oldSpace = new Space();
+        BeanUtils.copyProperties(spaceEditRequest, oldSpace);
         //不同于更新update,编辑需要设置editTime
-        space.setEditTime(new Date());
+        oldSpace.setEditTime(new Date());
         //校验空间
-        spaceService.validSpace(space,false);
+        spaceService.validSpace(oldSpace,false);
         //仅本人或管理员可以操作
         User loginUser = userService.getLoginUser(request);
-        if(!userService.isAdmin(loginUser)) {
-            //不是管理员,也不是本人,抛出异常
-            if (!queryedSpace.getUserId().equals(loginUser.getId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "当前用户没有权限编辑空间");
-            }
-        }
+        spaceService.checkSpaceAuth(oldSpace,loginUser);
         //补充审核参数
-        spaceService.fillSpaceBySpaceLevel(space);
+        spaceService.fillSpaceBySpaceLevel(oldSpace);
         //有权限,操作数据库
-        boolean result = spaceService.updateById(space);
+        boolean result = spaceService.updateById(oldSpace);
         ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新空间失败"));
         return ResultUtils.success(result);
     }
@@ -237,4 +229,5 @@ public class SpaceController {
 
         return ResultUtils.success(spaceLevelList);
     }
+
 }

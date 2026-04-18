@@ -21,7 +21,7 @@ public class FilePictureUpload extends PictureUploadTemplate<MultipartFile>{
         //1.校验大小 字节为单位
         long fileSize = file.getSize();
         final long ONE_MB = 1024 * 1024;
-        ThrowUtils.throwIf(fileSize>2*ONE_MB,new BusinessException(ErrorCode.PARAMS_ERROR,"图片大小不能超过2MB"));
+        ThrowUtils.throwIf(fileSize>5*ONE_MB,new BusinessException(ErrorCode.PARAMS_ERROR,"图片大小不能超过5MB"));
         //2.校验文件后缀名
         //todo 使用枚举类
         PictureFormatEnum[] values = PictureFormatEnum.values();

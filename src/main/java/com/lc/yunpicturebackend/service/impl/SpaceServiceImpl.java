@@ -69,7 +69,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"当前用户无权限创建更高级别空间");
         }
         lockMap = new ConcurrentHashMap<>();
-        //针对用户进行枷锁
+        //针对用户进行加锁
         Object lock = lockMap.computeIfAbsent(uid, (key) -> new Object());
         synchronized(lock){
             transactionTemplate.execute((status)->{
@@ -203,6 +203,15 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         }
         if(space.getMaxSize()==null){
             space.setMaxSize(spaceLevelEnum.getMaxSize());
+        }
+    }
+
+    @Override
+    public void checkSpaceAuth(Space space, User loginUser) {
+        ThrowUtils.throwIf(ObjectUtil.isNull(loginUser),ErrorCode.PARAMS_ERROR,"当前用户未登录");
+        //仅本人或管理员可以访问
+        if( !space.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser) ){
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"当前用户没有该空间的权限");
         }
     }
 

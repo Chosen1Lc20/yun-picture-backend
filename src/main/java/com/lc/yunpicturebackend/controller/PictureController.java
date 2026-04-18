@@ -424,4 +424,8 @@ public class PictureController {
         boolean result = pictureService.editPictureByBatch(pictureEditRequestByBatch, loginUser);
         return ResultUtils.success(result);
     }
+
+    //todo Ai扩图接口
+
+
 }
