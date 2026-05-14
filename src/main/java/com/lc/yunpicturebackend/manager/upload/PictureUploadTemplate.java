@@ -10,6 +10,7 @@ import com.lc.yunpicturebackend.exception.ThrowUtils;
 import com.lc.yunpicturebackend.manager.CosManager;
 import com.lc.yunpicturebackend.model.dto.file.UploadPictureResult;
 import com.lc.yunpicturebackend.model.entity.Picture;
+import com.lc.yunpicturebackend.service.PictureService;
 import com.lc.yunpicturebackend.utils.picture.ColorTransformUtils;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.CIObject;
@@ -35,7 +36,9 @@ public abstract class PictureUploadTemplate<T> {
     private CosManager cosManager;
     @Resource
     private CosClientConfig cosClientConfig;
-
+    // 类似的ai扩图后的图片url https://vigen-invi.oss-cn-shanghai.aliyuncs.com/service_dashscope/ImageOutPainting/2026-05-03/public/
+    // 38ab8936-a62d-4b27-87fc-20343209fb18/result-cf0ed624-e4fb-47c7-949c-feb938ca1d9a.jpg?OSSAccessKeyId=LTAI5t7aiMEUzu1F2xPMCdFj&
+    // Expires=1777893587&Signature=CChu29Rq0P5i5kjgVFsLWcej5f4=
     public UploadPictureResult uploadPicture(T t, String uploadPathPrefix) {
         //1.校验文件
         validPicture(t);
@@ -44,6 +47,11 @@ public abstract class PictureUploadTemplate<T> {
         String formatDatetime = LocalDateTime.now().format(formatter);
         //拼接图片上传地址
         String originalFileName = getOriginalFileName(t);
+        //todo
+        //attention 在进行AI扩图时,扩好的新图片的名字会变成 类似这种result-25a4ea37-9dff-439c-b50e-9e401bc6096b,所以在这更改名字
+        if(originalFileName.startsWith("result-")){
+            originalFileName = String.format("扩图.%s",FileUtil.getSuffix(originalFileName));
+        }
         String UUId = RandomUtil.randomString(16);
         //文件后缀名
         String fileSuffix = FileUtil.getSuffix(originalFileName);

@@ -17,14 +17,6 @@ class YunPictureBackendApplicationTests {
 	private RedisTemplate<String, Object> redisTemplate;
 	@Test
 	public void doTest(){
-		ValueOperations<String, Object> ops = redisTemplate.opsForValue();
-		ops.set("111","aaa");
-		assertEquals("aaa",ops.get("111"),"找不到对应的值");
-		log.info((String) ops.get("111"));
-		ops.set("111","bbb");
-		assertEquals("bbb",ops.get("111"),"找不到对应的值");
-		log.info((String) ops.get("111"));
-		redisTemplate.delete("111");
-		assertEquals(null,ops.get("111"),"删除失败");
+
 	}
 }

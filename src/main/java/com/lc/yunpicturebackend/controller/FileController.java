@@ -26,9 +26,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
-@RestController("/file")
+@RestController("file")
 @Slf4j
-@RequestMapping("file")
+@RequestMapping("/file")
 public class FileController {
     @Resource
     private CosManager cosManager;

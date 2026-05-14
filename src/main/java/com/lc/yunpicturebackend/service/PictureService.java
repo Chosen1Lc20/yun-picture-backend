@@ -2,6 +2,7 @@ package com.lc.yunpicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lc.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.lc.yunpicturebackend.model.dto.picture.*;
 import com.lc.yunpicturebackend.model.dto.picture.batch.PictureEditRequestByBatch;
 import com.lc.yunpicturebackend.model.dto.picture.batch.PictureUploadByBatchRequest;
@@ -50,6 +51,7 @@ public interface PictureService extends IService<Picture> {
 
     List<PictureVo> searchPictureByColor(Long spaceId, String picColor, User loginUser);
 
+    CreateOutPaintingTaskResponse createPictureOutpaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
     /**
      * 批量编辑图片
      * @param pictureEditRequestByBatch

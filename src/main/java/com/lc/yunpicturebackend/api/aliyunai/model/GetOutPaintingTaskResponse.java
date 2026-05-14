@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 查询绘图任务响应
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -112,10 +115,10 @@ public class GetOutPaintingTaskResponse {
     private Usage usage;
 
     @Data
-    public static class Usage{
+    public static class Usage {
 
         /**
-         *模型成功生成图片的数量。计费公式：费用 = 图片数量 × 单价。
+         * 模型成功生成图片的数量。计费公式：费用 = 图片数量 × 单价。
          */
         private Integer image_count;
     }

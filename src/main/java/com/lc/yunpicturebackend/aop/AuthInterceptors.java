@@ -16,6 +16,13 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Stack;
+
+/**
+ * 用户权限校验
+ */
 @Aspect
 @Component
 public class AuthInterceptors {
@@ -45,6 +52,7 @@ public class AuthInterceptors {
         if (UserRoleEnum.ADMIN.equals(mustRoleEnum) && !UserRoleEnum.ADMIN.equals(userRoleEnum)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        Stack<Integer> stack = new Stack<>();
         // 通过权限校验，放行
         return joinPoint.proceed();
     }

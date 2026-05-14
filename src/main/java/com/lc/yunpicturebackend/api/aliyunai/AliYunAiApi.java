@@ -2,9 +2,7 @@ package com.lc.yunpicturebackend.api.aliyunai;
 
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpUtil;
+import cn.hutool.http.*;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.lc.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
@@ -12,6 +10,7 @@ import com.lc.yunpicturebackend.api.aliyunai.model.CreateOutPaintingTaskResponse
 import com.lc.yunpicturebackend.api.aliyunai.model.GetOutPaintingTaskResponse;
 import com.lc.yunpicturebackend.exception.BusinessException;
 import com.lc.yunpicturebackend.exception.ErrorCode;
+import com.lc.yunpicturebackend.exception.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -49,7 +48,7 @@ public class AliYunAiApi {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         HttpRequest httpRequest = new HttpRequest(CREATE_OUT_PAINTING_TASK_URL);
-        httpRequest.header("Content-Type", "application/json").
+        httpRequest.header(Header.CONTENT_TYPE, ContentType.JSON.getValue()).
                 header("Authorization", "Bearer " + apiKey).
                 //必须开启异步处理,设置为enable
                         header("X-DashScope-Async", "enable").
@@ -75,12 +74,12 @@ public class AliYunAiApi {
 
     /**
      * 查询创建的任务
-     * @param getOutPaintingTaskResponse1
+     * @param taskId
      * @return
      */
-    public GetOutPaintingTaskResponse getOutPaintingTask(GetOutPaintingTaskResponse getOutPaintingTaskResponse1) {
+    public GetOutPaintingTaskResponse getOutPaintingTask(String taskId) {
         //AI扩图的任务Id
-        String taskId = getOutPaintingTaskResponse1.getOutput().getTaskId();
+        ThrowUtils.throwIf(StringUtils.isBlank(taskId),ErrorCode.PARAMS_ERROR,"任务id不能为空");
         HttpRequest httpRequest = HttpRequest.get(String.format(GET_OUT_PAINTING_TASK_URL, taskId))
                 .header("Authorization", "Bearer " + apiKey);
         try (HttpResponse httpResponse = httpRequest.execute()) {

@@ -17,6 +17,7 @@
             <result property="editTime" column="editTime" />
             <result property="updateTime" column="updateTime" />
             <result property="isDelete" column="isDelete" />
+            <result property="spaceType" column="spaceType"/>
     </resultMap>
 
     <sql id="Base_Column_List">

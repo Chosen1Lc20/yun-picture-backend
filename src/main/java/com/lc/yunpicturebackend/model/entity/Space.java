@@ -71,6 +71,11 @@ public class Space {
     private Date updateTime;
 
     /**
+     * 空间类型
+     */
+    private Integer spaceType;
+
+    /**
      * 是否删除
      */
     @TableLogic

@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RequestMapping("/SpaceAnalyze")
-@RestController
+@RestController("SpaceAnalyze")
 @Slf4j
 public class SpaceAnalyzeController {
 

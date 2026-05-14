@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lc.yunpicturebackend.annotation.AuthCheck;
+import com.lc.yunpicturebackend.auth.SpaceUserAuthManager;
 import com.lc.yunpicturebackend.common.BaseResponse;
 import com.lc.yunpicturebackend.common.DeleteRequest;
 import com.lc.yunpicturebackend.common.ResultUtils;
@@ -40,7 +41,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@RestController
+@RestController("space")
 @RequestMapping("/space")
 public class SpaceController {
 
@@ -49,6 +50,9 @@ public class SpaceController {
 
     @Resource
     private SpaceService spaceService;
+
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
 
     /**
      * 创建空间 最多只能创建一个
@@ -95,6 +99,7 @@ public class SpaceController {
     @PostMapping("/update")
     @AuthCheck( mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateSpace(@RequestBody SpaceUpdateRequest spaceUpdateRequest) {
+        log.info(spaceUpdateRequest.toString());
         ThrowUtils.throwIf(ObjectUtil.isNull(spaceUpdateRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
         Long id = spaceUpdateRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"空间不存在"));
@@ -105,12 +110,12 @@ public class SpaceController {
         //自动补充参数
         spaceService.fillSpaceBySpaceLevel(space);
         //判断空间是否存在
-        Space QueryedSpace = spaceService.getById(id);
-        ThrowUtils.throwIf(ObjectUtil.isNull(QueryedSpace),new BusinessException(ErrorCode.OPERATION_ERROR,"更新的空间不存在"));
+        Space oldSpace = spaceService.getById(id);
+        ThrowUtils.throwIf(ObjectUtil.isNull(oldSpace),new BusinessException(ErrorCode.OPERATION_ERROR,"更新的空间不存在"));
         //操作数据库
         boolean result = spaceService.updateById(space);
         ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新空间失败"));
-        return ResultUtils.success(result);
+        return ResultUtils.success(true);
     }
 
     /**
@@ -119,14 +124,17 @@ public class SpaceController {
      * @return BaseResponse<SpaceVo>
      */
     @PostMapping("/get/vo")
-    public BaseResponse<SpaceVo> getSpaceVoById(@RequestBody SpaceQueryRequest spaceQueryRequest) {
+    public BaseResponse<SpaceVo> getSpaceVoById(@RequestBody SpaceQueryRequest spaceQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(ObjectUtil.isNull(spaceQueryRequest),new BusinessException(ErrorCode.PARAMS_ERROR,"请求参数为空"));
         Long id = spaceQueryRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0 ,new BusinessException(ErrorCode.PARAMS_ERROR,"传递参数错误>"));
         Space space = spaceService.getById(id);
         ThrowUtils.throwIf(ObjectUtil.isNull(space),new BusinessException(ErrorCode.OPERATION_ERROR,"要查询的空间不存在"));
-
+        User loginUser = userService.getLoginUser(request);
+        //获取权限列表
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
         SpaceVo spaceVo = spaceService.getSpaceVo(space);
+        spaceVo.setPermissionList(permissionList);
         return ResultUtils.success(spaceVo);
     }
 
@@ -196,24 +204,23 @@ public class SpaceController {
         Long id = spaceEditRequest.getId();
         ThrowUtils.throwIf(ObjectUtil.isNull(id) || id<=0,new BusinessException(ErrorCode.PARAMS_ERROR,"空间不存在"));
         //判断空间是否存在
-        Space queryedSpace = spaceService.getById(id);
-        ThrowUtils.throwIf(ObjectUtil.isNull(queryedSpace),new BusinessException(ErrorCode.NOT_FOUND_ERROR,"更新的空间不存在"));
+        Space oldSpace = spaceService.getById(id);
+        ThrowUtils.throwIf(ObjectUtil.isNull(oldSpace),new BusinessException(ErrorCode.NOT_FOUND_ERROR,"更新的空间不存在"));
         //空间存在
-        Space oldSpace = new Space();
-        BeanUtils.copyProperties(spaceEditRequest, oldSpace);
+        Space space = new Space();
+        BeanUtils.copyProperties(spaceEditRequest, space);
         //不同于更新update,编辑需要设置editTime
-        oldSpace.setEditTime(new Date());
+        space.setEditTime(new Date());
         //校验空间
-        spaceService.validSpace(oldSpace,false);
+        spaceService.validSpaceToEdit(spaceEditRequest);
         //仅本人或管理员可以操作
         User loginUser = userService.getLoginUser(request);
         spaceService.checkSpaceAuth(oldSpace,loginUser);
-        //补充审核参数
-        spaceService.fillSpaceBySpaceLevel(oldSpace);
+        //MP 对 updateById 的默认更新策略：非 NULL 字段才会生成 UPDATE 语句
         //有权限,操作数据库
-        boolean result = spaceService.updateById(oldSpace);
+        boolean result = spaceService.updateById(space);
         ThrowUtils.throwIf(!result,new BusinessException(ErrorCode.OPERATION_ERROR,"更新空间失败"));
-        return ResultUtils.success(result);
+        return ResultUtils.success(true);
     }
 
     @GetMapping("/spaceLevel")

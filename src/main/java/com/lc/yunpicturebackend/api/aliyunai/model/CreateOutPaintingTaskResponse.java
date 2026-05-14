@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 创建绘图任务响应
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -23,6 +23,11 @@ public class SpaceQueryRequest extends PageRequest implements Serializable {
     private String spaceName;
 
     /**
+     * 空间类型
+     */
+    private Integer spaceType;
+
+    /**
      * 空间级别
      */
     private Integer spaceLevel;

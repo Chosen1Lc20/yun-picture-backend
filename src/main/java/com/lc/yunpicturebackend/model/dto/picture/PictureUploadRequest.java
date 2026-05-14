@@ -2,6 +2,7 @@ package com.lc.yunpicturebackend.model.dto.picture;
 
 import lombok.Data;
 
+import javax.sound.midi.spi.SoundbankReader;
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -30,4 +31,5 @@ public class PictureUploadRequest implements Serializable {
      * 空间id
      */
     private Long spaceId;
+
 }

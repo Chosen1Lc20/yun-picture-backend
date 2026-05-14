@@ -3,6 +3,7 @@ package com.lc.yunpicturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lc.yunpicturebackend.model.dto.space.SpaceAddRequest;
+import com.lc.yunpicturebackend.model.dto.space.SpaceEditRequest;
 import com.lc.yunpicturebackend.model.dto.space.SpaceQueryRequest;
 import com.lc.yunpicturebackend.model.entity.Space;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -24,6 +25,8 @@ public interface SpaceService extends IService<Space> {
     Page<SpaceVo> getSpaceVoPage(Page<Space> page);
 
     void validSpace(Space space, boolean add);
+
+    void validSpaceToEdit(SpaceEditRequest spaceEditRequest);
 
     QueryWrapper<Space> getQuerySpaceWrapper(SpaceQueryRequest spaceQueryRequest);
 

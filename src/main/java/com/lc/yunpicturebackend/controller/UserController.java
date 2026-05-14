@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@RestController("/user")
+@RestController("user")
 @RequestMapping("/user")
 public class UserController {
     @Resource
