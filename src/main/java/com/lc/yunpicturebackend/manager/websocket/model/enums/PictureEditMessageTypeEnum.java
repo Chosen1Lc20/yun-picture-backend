@@ -19,7 +19,6 @@ public enum PictureEditMessageTypeEnum {
     PictureEditMessageTypeEnum(String text, String value) {
         this.text = text;
         this.value = value;
-        ConcurrentHashMap.newKeySet().add(this);
     }
 
     /**
