@@ -2,6 +2,8 @@ package com.lc.yunpicturebackend.manager.websocket.model.enums;
 
 import lombok.Getter;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 @Getter
 public enum PictureEditMessageTypeEnum {
 
@@ -17,6 +19,7 @@ public enum PictureEditMessageTypeEnum {
     PictureEditMessageTypeEnum(String text, String value) {
         this.text = text;
         this.value = value;
+        ConcurrentHashMap.newKeySet().add(this);
     }
 
     /**
