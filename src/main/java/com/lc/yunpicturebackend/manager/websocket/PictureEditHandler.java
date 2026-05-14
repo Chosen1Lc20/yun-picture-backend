@@ -50,9 +50,9 @@ public class PictureEditHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         User loginUser = (User) session.getAttributes().get("loginUser");
-        Long pictureId = (Long) session.getAttributes().get("pictureId");
+        Long pictureId = Long.valueOf((String) session.getAttributes().get("pictureId"));
         //连接建立成功,把当前会话添加到map中
-        pictureSessions.computeIfAbsent(pictureId, k -> new HashSet<>()).add(session);
+        pictureSessions.computeIfAbsent(pictureId, k -> ConcurrentHashMap.newKeySet()).add(session);
         //给其他人广播,发送通知
         PictureEditResponseMessage pictureEditResponseMessage = new PictureEditResponseMessage();
         pictureEditResponseMessage.setType(PictureEditMessageTypeEnum.INFO.getValue());
@@ -82,7 +82,7 @@ public class PictureEditHandler extends TextWebSocketHandler {
             module.addSerializer(Long.TYPE, ToStringSerializer.instance);
             objectMapper.registerModule(module);
             String jsonMessage = objectMapper.writeValueAsString(pictureEditResponseMessage);
-            WebSocketMessage message = JSONUtil.toBean(jsonMessage, WebSocketMessage.class);
+            TextMessage message = new TextMessage(jsonMessage);
             for (WebSocketSession session : webSocketSessions) {
                 if (excludedSession != null && excludedSession.equals(session)) {
                     continue;
@@ -121,7 +121,7 @@ public class PictureEditHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         User loginUser = (User) session.getAttributes().get("loginUser");
         Long userId = (Long) session.getAttributes().get("userId");
-        Long pictureId = (Long) session.getAttributes().get("pictureId");
+        Long pictureId = Long.valueOf((String) session.getAttributes().get("pictureId"));
         PictureEditRequestMessage pictureEditRequestMessage = JSONUtil.toBean(message.getPayload(), PictureEditRequestMessage.class);
         String type = pictureEditRequestMessage.getType();
         PictureEditMessageTypeEnum editMessageType = PictureEditMessageTypeEnum.getEnumByValue(type);
@@ -184,7 +184,7 @@ public class PictureEditHandler extends TextWebSocketHandler {
     }
 
     /**
-     * 处理退出会话的消息
+     * 处理退出编辑图片的消息
      *
      * @param pictureEditRequestMessage
      * @param session
@@ -230,6 +230,14 @@ public class PictureEditHandler extends TextWebSocketHandler {
         Long pictureId = Long.valueOf((String) session.getAttributes().get("pictureId"));
         //如果当前用户是编辑者,那么就移除
         handleExitEditMessage(null, session, pictureId, loginUser);
+        // 响应
+        PictureEditResponseMessage pictureEditResponseMessage = new PictureEditResponseMessage();
+        pictureEditResponseMessage.setType(PictureEditMessageTypeEnum.INFO.getValue());
+        String message = String.format("%s离开编辑", loginUser.getUserName());
+        pictureEditResponseMessage.setMessage(message);
+        pictureEditResponseMessage.setUserVo(userService.getUserVo(loginUser));
+        broadcastToPicture(pictureId, pictureEditResponseMessage);
+        //先广播给其它用户,然后再删除对应会话,避免最后一个用户离开编辑时报NPE
         Set<WebSocketSession> sessions = pictureSessions.get(pictureId);
         //从session中去除掉当前的会话连接
         if (sessions != null) {
@@ -238,12 +246,5 @@ public class PictureEditHandler extends TextWebSocketHandler {
                 pictureSessions.remove(pictureId);
             }
         }
-        // 响应
-        PictureEditResponseMessage pictureEditResponseMessage = new PictureEditResponseMessage();
-        pictureEditResponseMessage.setType(PictureEditMessageTypeEnum.INFO.getValue());
-        String message = String.format("%s离开编辑", loginUser.getUserName());
-        pictureEditResponseMessage.setMessage(message);
-        pictureEditResponseMessage.setUserVo(userService.getUserVo(loginUser));
-        broadcastToPicture(pictureId, pictureEditResponseMessage);
     }
 }

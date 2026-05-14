@@ -205,7 +205,7 @@ public class PictureController {
         if (spaceId != null) {
             //私有空间的照片只能空间创建人查看,系统管理员也不行!
             //fixme 已改为注解鉴权(还是不太懂,所以还没有修改)
-            pictureService.checkPictureAuth(loginUser,picture);
+//            pictureService.checkPictureAuth(loginUser,picture);
         }
         //获取权限列表,返回给前端使用
         List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
