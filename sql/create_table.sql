@@ -81,6 +81,8 @@ create table if not exists space
 -- 添加新列
 ALTER TABLE picture
     ADD COLUMN spaceId  bigint  null comment '空间 id（为空表示公共空间）';
+ALTER TABLE picture
+    ADD COLUMN picColor varchar(16) null comment '图片主色调';
 
 -- 创建索引
 CREATE INDEX idx_spaceId ON picture (spaceId);
@@ -106,4 +108,25 @@ create table if not exists space_user
 ) comment '空间用户关联' collate = utf8mb4_unicode_ci;
 # 由于有唯一键，所以去掉了逻辑删除字段。便于操作
 # 创建团队空间时，要自动将创建人作为管理员添加到表中
+
+-- 用户消息表（站内消息）
+create table if not exists user_message
+(
+    id         bigint auto_increment comment 'id' primary key,
+    userId     bigint                                 not null comment '接收用户 id',
+    type       varchar(64)                            not null comment '消息类型：PICTURE_REVIEW-图片审核通知',
+    title      varchar(128)                           not null comment '消息标题',
+    content    varchar(1024)                          null comment '消息内容',
+    bizId      bigint                                 null comment '关联业务 id（如 pictureId）',
+    extra      varchar(1024)                          null comment '附加信息（JSON，便于扩展）',
+    isRead     tinyint      default 0                 not null comment '是否已读：0-未读; 1-已读',
+    readTime   datetime                               null comment '阅读时间',
+    createTime datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint      default 0                 not null comment '是否删除',
+    -- 索引设计
+    INDEX idx_userId (userId),                      -- 按接收用户查询消息列表
+    INDEX idx_userId_isRead (userId, isRead),       -- 查询某用户未读消息（红点/未读数）
+    INDEX idx_type_bizId (type, bizId)              -- 按业务关联反查（如某张图片产生的通知）
+) comment '用户消息（站内信）' collate = utf8mb4_unicode_ci;
 
