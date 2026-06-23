@@ -127,7 +127,7 @@ public class StpInterfaceImpl implements StpInterface {
         Long userId = loginUser.getId();
         // 优先从上下文中获取 SpaceUser 对象
         SpaceUser spaceUser = authContext.getSpaceUser();
-        // 说明要校验的是团队空间的权限
+        // 说明要校验的是团队空间的权限,那么我们可以直接去数据库中获取该用户是否有对应的权限
         if (spaceUser != null) {
             return SpaceUserAuthManager.getPermissionsByRoles(spaceUser.getSpaceRole());
         }
@@ -191,7 +191,7 @@ public class StpInterfaceImpl implements StpInterface {
                 return new ArrayList<>();
             }
         } else {
-            // 团队空间，查询 SpaceUser 并获取角色和权限
+            // 团队空间，查询 SpaceUser表 并获取角色和权限
             spaceUser = spaceUserService.lambdaQuery()
                     .eq(SpaceUser::getSpaceId, spaceId)
                     .eq(SpaceUser::getUserId, userId)

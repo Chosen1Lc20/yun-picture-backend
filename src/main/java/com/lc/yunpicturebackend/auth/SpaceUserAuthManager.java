@@ -42,7 +42,7 @@ public class SpaceUserAuthManager {
         SPACE_USER_AUTH_CONFIG = JSONUtil.toBean(jsonStr, SpaceUserAuthConfig.class);
     }
 
-    /** attention 核心
+    /**
      * 根据空间获取当前用户权限列表
      * @param space
      * @param loginUser
