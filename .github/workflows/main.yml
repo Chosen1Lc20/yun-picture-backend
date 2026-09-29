@@ -1,0 +1,45 @@
+name: lcrobot
+on: 
+  issue_comment:
+    branches: [main]
+    types: [created,deleted,edited]
+permissions: 
+  issues: write
+  contents: read
+jobs:
+  auto-reply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 判断新建Issue自动欢迎
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        uses: peter-evans/create-issue-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          comment: |
+            👋 您好！感谢提交Issue。
+            请尽可能补充复现步骤、环境版本，方便我们定位问题。
+            等待维护者查看。
+
+      - name: 识别评论命令 /help
+        if: >
+          github.event_name == 'issue_comment'
+          && contains(github.event.comment.body, '/help')
+        uses: peter-evans/create-issue-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          comment: |
+            🤖 机器人帮助：
+            `/help` 显示帮助
+            `/thanks` 发送致谢
+
+      - name: 识别评论命令 /thanks
+        if: >
+          github.event_name == 'issue_comment'
+          && contains(github.event.comment.body, '/thanks')
+        uses: peter-evans/create-issue-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          comment: "🤖 很高兴能够帮到你！😊"
